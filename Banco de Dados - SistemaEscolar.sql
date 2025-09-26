@@ -1,100 +1,126 @@
+-- Criar banco de dados
 CREATE DATABASE SistemaEscolar;
 USE SistemaEscolar;
 
-CREATE TABLE Pessoa (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    cpf VARCHAR(14) UNIQUE NOT NULL,
-    email VARCHAR(100),
-    telefone VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
-CREATE TABLE Cliente (
-    id INT PRIMARY KEY,
-    endereco VARCHAR(200),
-    CONSTRAINT fk_cliente_pessoa FOREIGN KEY (id) REFERENCES Pessoa(id)
-);
-
-CREATE TABLE Fornecedor (
-    id INT PRIMARY KEY,
-    empresa VARCHAR(100),
-    CONSTRAINT fk_fornecedor_pessoa FOREIGN KEY (id) REFERENCES Pessoa(id)
-);
-
-CREATE TABLE Empregado (
-    id INT PRIMARY KEY,
-    cargo VARCHAR(50),
-    salario DECIMAL(10,2),
-    CONSTRAINT fk_empregado_pessoa FOREIGN KEY (id) REFERENCES Pessoa(id)
-);
-
-CREATE TABLE Vendedor (
-    id INT PRIMARY KEY,
-    comissao DECIMAL(5,2),
-    CONSTRAINT fk_vendedor_empregado FOREIGN KEY (id) REFERENCES Empregado(id)
-);
-
+-- Usuários do sistema (login)
 CREATE TABLE Usuario (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
-    senha VARCHAR(255) NOT NULL,
-    pessoa_id INT NOT NULL,
-    CONSTRAINT fk_usuario_pessoa FOREIGN KEY (pessoa_id) REFERENCES Pessoa(id)
+    senha VARCHAR(255) NOT NULL, -- senha deve ser armazenada com hash
+    perfil ENUM('Aluno','Professor','Administrador') NOT NULL
 );
 
-CREATE TABLE Produto (
+-- Alunos
+CREATE TABLE Aluno (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    descricao VARCHAR(255),
-    preco DECIMAL(10,2) NOT NULL,
-    estoque INT DEFAULT 0
+    matricula VARCHAR(20) UNIQUE NOT NULL, -- matrícula única por período
+    data_nascimento DATE,
+    usuario_id INT UNIQUE,
+    CONSTRAINT fk_aluno_usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(id)
 );
 
-CREATE TABLE Pedido (
+-- Professores
+CREATE TABLE Professor (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    cliente_id INT NOT NULL,
-    vendedor_id INT,
-    data_pedido DATETIME DEFAULT CURRENT_TIMESTAMP,
-    total DECIMAL(10,2) DEFAULT 0,
-    CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id) REFERENCES Cliente(id),
-    CONSTRAINT fk_pedido_vendedor FOREIGN KEY (vendedor_id) REFERENCES Vendedor(id)
+    nome VARCHAR(100) NOT NULL,
+    usuario_id INT UNIQUE,
+    CONSTRAINT fk_professor_usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(id)
 );
 
-CREATE TABLE ItemPedido (
+-- Disciplinas
+CREATE TABLE Disciplina (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    pedido_id INT NOT NULL,
-    produto_id INT NOT NULL,
-    quantidade INT NOT NULL,
-    preco_unitario DECIMAL(10,2) NOT NULL,
-    CONSTRAINT fk_itempedido_pedido FOREIGN KEY (pedido_id) REFERENCES Pedido(id),
-    CONSTRAINT fk_itempedido_produto FOREIGN KEY (produto_id) REFERENCES Produto(id)
+    nome VARCHAR(100) NOT NULL
 );
 
--- Pessoa
-INSERT INTO Pessoa (nome, cpf, email, telefone) VALUES ('João Silva', '123.456.789-00', 'joao@email.com', '11999999999');
+-- Vínculo Professor-Disciplina
+-- Um professor pode lecionar várias disciplinas
+CREATE TABLE ProfessorDisciplina (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    professor_id INT NOT NULL,
+    disciplina_id INT NOT NULL,
+    CONSTRAINT fk_pd_professor FOREIGN KEY (professor_id) REFERENCES Professor(id),
+    CONSTRAINT fk_pd_disciplina FOREIGN KEY (disciplina_id) REFERENCES Disciplina(id),
+    CONSTRAINT uq_pd UNIQUE (professor_id, disciplina_id) -- não deixar duplicado
+);
 
--- Cliente
-INSERT INTO Cliente (id, endereco) VALUES (1, 'Rua Exemplo, 123');
+-- Turmas
+CREATE TABLE Turma (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(50) NOT NULL,
+    periodo_letivo VARCHAR(20) NOT NULL,
+    professor_responsavel_id INT NOT NULL,
+    CONSTRAINT uq_turma UNIQUE (nome, periodo_letivo), -- turma não pode repetir no mesmo período
+    CONSTRAINT fk_turma_professor FOREIGN KEY (professor_responsavel_id) REFERENCES Professor(id)
+);
 
--- Produto
-INSERT INTO Produto (nome, descricao, preco, estoque) VALUES ('Mouse Gamer', 'Mouse RGB', 150.00, 20);
+-- Vínculo Turma-Disciplina
+-- Uma turma pode ter várias disciplinas
+CREATE TABLE TurmaDisciplina (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    turma_id INT NOT NULL,
+    disciplina_id INT NOT NULL,
+    CONSTRAINT fk_td_turma FOREIGN KEY (turma_id) REFERENCES Turma(id),
+    CONSTRAINT fk_td_disciplina FOREIGN KEY (disciplina_id) REFERENCES Disciplina(id),
+    CONSTRAINT uq_td UNIQUE (turma_id, disciplina_id)
+);
 
--- Pedido
-INSERT INTO Pedido (cliente_id, vendedor_id, total) VALUES (1, NULL, 150.00);
+-- Notas
+CREATE TABLE Nota (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    aluno_id INT NOT NULL,
+    disciplina_id INT NOT NULL,
+    professor_id INT NOT NULL,
+    valor DECIMAL(4,2) NOT NULL CHECK (valor >= 0 AND valor <= 10),
+    data_lancamento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_nota_aluno FOREIGN KEY (aluno_id) REFERENCES Aluno(id),
+    CONSTRAINT fk_nota_disciplina FOREIGN KEY (disciplina_id) REFERENCES Disciplina(id),
+    CONSTRAINT fk_nota_professor FOREIGN KEY (professor_id) REFERENCES Professor(id)
+);
 
--- ItemPedido
-INSERT INTO ItemPedido (pedido_id, produto_id, quantidade, preco_unitario) VALUES (1, 1, 1, 150.00);
+-- Histórico de Notas
+-- Registra alterações (quem mudou, quando e valores)
+CREATE TABLE HistoricoNota (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nota_id INT NOT NULL,
+    valor_antigo DECIMAL(4,2),
+    valor_novo DECIMAL(4,2),
+    professor_id INT NOT NULL,
+    data_alteracao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_hn_nota FOREIGN KEY (nota_id) REFERENCES Nota(id),
+    CONSTRAINT fk_hn_professor FOREIGN KEY (professor_id) REFERENCES Professor(id)
+);
 
--- Ver todos os clientes
-SELECT * FROM Cliente;
 
--- Ver pedidos de um cliente
-SELECT * FROM Pedido WHERE cliente_id = 1;
+-- Dados de exemplo
 
--- Itens de um pedido
-SELECT p.nome, ip.quantidade, ip.preco_unitario
-FROM ItemPedido ip
-JOIN Produto p ON ip.produto_id = p.id
-WHERE ip.pedido_id = 1;
+-- Usuários
+INSERT INTO Usuario (username, senha, perfil) VALUES ('aluno1', '123456', 'Aluno');
+INSERT INTO Usuario (username, senha, perfil) VALUES ('prof1', '123456', 'Professor');
+INSERT INTO Usuario (username, senha, perfil) VALUES ('admin', '123456', 'Administrador');
+
+-- Aluno
+INSERT INTO Aluno (nome, matricula, data_nascimento, usuario_id) 
+VALUES ('João da Silva', '2025A001', '2008-05-10', 1);
+
+-- Professor
+INSERT INTO Professor (nome, usuario_id) VALUES ('Maria Oliveira', 2);
+
+-- Disciplina
+INSERT INTO Disciplina (nome) VALUES ('Matemática');
+
+-- Vínculo Professor-Disciplina
+INSERT INTO ProfessorDisciplina (professor_id, disciplina_id) VALUES (1, 1);
+
+-- Turma
+INSERT INTO Turma (nome, periodo_letivo, professor_responsavel_id) VALUES ('1º Ano A', '2025', 1);
+
+-- Vínculo Turma-Disciplina
+INSERT INTO TurmaDisciplina (turma_id, disciplina_id) VALUES (1, 1);
+
+-- Nota
+INSERT INTO Nota (aluno_id, disciplina_id, professor_id, valor) VALUES (1, 1, 1, 8.5);
+
+-- Histórico de Nota (exemplo de alteração)
+INSERT INTO HistoricoNota (nota_id, valor_antigo, valor_novo, professor_id) VALUES (1, 8.5, 9.0, 1);
