@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Robertolarica123!
+      MYSQL_DATABASE: SistemaEscolar
+      MYSQL_USER: RobertoLarica
+      MYSQL_PASSWORD: 12345654321
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/db:/var/lib/mysql
+  backend:
+    build:
+      context: ./backend/SistemaEscolar.Api
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "server=db;port=3306;database=SistemaEscolar;user=usuario;password=senha_usuario"
