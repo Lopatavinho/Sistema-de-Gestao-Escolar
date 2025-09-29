@@ -20,4 +20,4 @@ services:
       - db
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "server=db;port=3306;database=SistemaEscolar;user=usuario;password=senha_usuario"
+      ConnectionStrings__DefaultConnection: "server=db;port=3306;database=SistemaEscolar;user=root;password=Robertolarica123!"
