@@ -14,7 +14,7 @@ CREATE TABLE Usuario (
 CREATE TABLE Aluno (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    matricula VARCHAR(20) UNIQUE NOT NULL, -- matrícula única por período
+    matricula VARCHAR(20) UNIQUE NOT NULL, -- matrícula única
     data_nascimento DATE,
     usuario_id INT UNIQUE,
     CONSTRAINT fk_aluno_usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(id)
@@ -34,8 +34,7 @@ CREATE TABLE Disciplina (
     nome VARCHAR(100) NOT NULL
 );
 
--- Vínculo Professor-Disciplina
--- Um professor pode lecionar várias disciplinas
+-- Vínculo Professor-Disciplina (um professor pode lecionar várias disciplinas)
 CREATE TABLE ProfessorDisciplina (
     id INT AUTO_INCREMENT PRIMARY KEY,
     professor_id INT NOT NULL,
@@ -55,8 +54,7 @@ CREATE TABLE Turma (
     CONSTRAINT fk_turma_professor FOREIGN KEY (professor_responsavel_id) REFERENCES Professor(id)
 );
 
--- Vínculo Turma-Disciplina
--- Uma turma pode ter várias disciplinas
+-- Vínculo Turma-Disciplina (uma turma pode ter várias disciplinas)
 CREATE TABLE TurmaDisciplina (
     id INT AUTO_INCREMENT PRIMARY KEY,
     turma_id INT NOT NULL,
@@ -64,6 +62,17 @@ CREATE TABLE TurmaDisciplina (
     CONSTRAINT fk_td_turma FOREIGN KEY (turma_id) REFERENCES Turma(id),
     CONSTRAINT fk_td_disciplina FOREIGN KEY (disciplina_id) REFERENCES Disciplina(id),
     CONSTRAINT uq_td UNIQUE (turma_id, disciplina_id)
+);
+
+-- Matrícula: vínculo Aluno-Turma por período letivo
+CREATE TABLE AlunoTurma (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    aluno_id INT NOT NULL,
+    turma_id INT NOT NULL,
+    periodo_letivo VARCHAR(20) NOT NULL,
+    CONSTRAINT fk_at_aluno FOREIGN KEY (aluno_id) REFERENCES Aluno(id),
+    CONSTRAINT fk_at_turma FOREIGN KEY (turma_id) REFERENCES Turma(id),
+    CONSTRAINT uq_aluno_periodo UNIQUE (aluno_id, periodo_letivo) -- garante 1 turma por período
 );
 
 -- Notas
@@ -79,8 +88,7 @@ CREATE TABLE Nota (
     CONSTRAINT fk_nota_professor FOREIGN KEY (professor_id) REFERENCES Professor(id)
 );
 
--- Histórico de Notas
--- Registra alterações (quem mudou, quando e valores)
+-- Histórico de Notas (registra alterações: quem mudou, quando e valores)
 CREATE TABLE HistoricoNota (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nota_id INT NOT NULL,
@@ -92,8 +100,9 @@ CREATE TABLE HistoricoNota (
     CONSTRAINT fk_hn_professor FOREIGN KEY (professor_id) REFERENCES Professor(id)
 );
 
-
+-- -------------------
 -- Dados de exemplo
+-- -------------------
 
 -- Usuários
 INSERT INTO Usuario (username, senha, perfil) VALUES ('aluno1', '123456', 'Aluno');
@@ -118,6 +127,9 @@ INSERT INTO Turma (nome, periodo_letivo, professor_responsavel_id) VALUES ('1º 
 
 -- Vínculo Turma-Disciplina
 INSERT INTO TurmaDisciplina (turma_id, disciplina_id) VALUES (1, 1);
+
+-- Matrícula Aluno-Turma
+INSERT INTO AlunoTurma (aluno_id, turma_id, periodo_letivo) VALUES (1, 1, '2025');
 
 -- Nota
 INSERT INTO Nota (aluno_id, disciplina_id, professor_id, valor) VALUES (1, 1, 1, 8.5);
